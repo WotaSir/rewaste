@@ -1,50 +1,42 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
-import LandingPage from './pages/LandingPage';
-import AuthPage from './pages/AuthPage';
-import ChatDashboard from './pages/ChatDashboard';
 import { AuthProvider } from './context/AuthContext';
-import ProtectedRoute from './components/ProtectedRoute';
-import CustomCursor from './components/CustomCursor';
-import ParticleBackground from './components/ParticleBackground';
+import { ThemeProvider } from './context/ThemeContext';
+import Navigation from './components/Layout/Navigation';
+import Footer from './components/Layout/Footer';
+import FloatingLeaves from './components/animations/FloatingLeaves';
+import Home from './pages/Home';
+import AddWaste from './pages/AddWaste';
+import Match from './pages/Match';
+import Impact from './pages/Impact';
+import About from './pages/About';
+import Login from './pages/Login';
+import Admin from './pages/Admin';
 
 function App() {
   return (
-    <AuthProvider>
-      <Router>
-        <div className="min-h-screen bg-gradient-to-br from-dark-900 via-primary-900 to-secondary-900 font-inter relative overflow-hidden">
-          <ParticleBackground />
-          <CustomCursor />
-          <Routes>
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/auth" element={<AuthPage />} />
-            <Route 
-              path="/chat" 
-              element={
-                <ProtectedRoute>
-                  <ChatDashboard />
-                </ProtectedRoute>
-              } 
-            />
-          </Routes>
-          <ToastContainer
-            position="top-right"
-            autoClose={3000}
-            hideProgressBar={false}
-            newestOnTop={false}
-            closeOnClick
-            rtl={false}
-            pauseOnFocusLoss
-            draggable
-            pauseOnHover
-            theme="dark"
-            toastClassName="backdrop-blur-md bg-white/10 border border-white/20"
-          />
-        </div>
-      </Router>
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <Router>
+          <div className="min-h-screen bg-white dark:bg-gray-900 relative">
+            <FloatingLeaves />
+            <Navigation />
+            <main className="relative z-10">
+              <Routes>
+                <Route path="/" element={<Home />} />
+                <Route path="/add-waste" element={<AddWaste />} />
+                <Route path="/match" element={<Match />} />
+                <Route path="/impact" element={<Impact />} />
+                <Route path="/about" element={<About />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/admin" element={<Admin />} />
+              </Routes>
+            </main>
+            <Footer />
+          </div>
+        </Router>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
 

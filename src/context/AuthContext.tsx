@@ -1,132 +1,86 @@
-import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import Cookies from 'js-cookie';
-import { toast } from 'react-toastify';
-
-interface User {
-  id: string;
-  email: string;
-  name: string;
-  lastLogin?: string;
-}
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { User as FirebaseUser, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import { auth } from '../lib/firebase';
+import { User } from '../types';
 
 interface AuthContextType {
-  user: User | null;
-  login: (email: string, password: string) => Promise<boolean>;
-  register: (name: string, email: string, password: string) => Promise<boolean>;
-  logout: () => void;
-  isLoading: boolean;
+  currentUser: User | null;
+  login: (email: string, password: string) => Promise<void>;
+  register: (email: string, password: string) => Promise<void>;
+  loginWithGoogle: () => Promise<void>;
+  logout: () => Promise<void>;
+  loading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (context === undefined) {
+  if (!context) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
 };
 
-interface AuthProviderProps {
-  children: ReactNode;
-}
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
 
-export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const login = async (email: string, password: string) => {
+    await signInWithEmailAndPassword(auth, email, password);
+  };
+
+  const register = async (email: string, password: string) => {
+    await createUserWithEmailAndPassword(auth, email, password);
+  };
+
+  const loginWithGoogle = async () => {
+    const provider = new GoogleAuthProvider();
+    await signInWithPopup(auth, provider);
+  };
+
+  const logout = async () => {
+    await signOut(auth);
+  };
 
   useEffect(() => {
-    // Check for stored user data on app load
-    const storedUser = Cookies.get('user');
-    if (storedUser) {
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch (error) {
-        console.error('Error parsing stored user data:', error);
-        Cookies.remove('user');
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser: FirebaseUser | null) => {
+      if (firebaseUser) {
+        // Convert Firebase user to our User type with mock data
+        setCurrentUser({
+          id: firebaseUser.uid,
+          email: firebaseUser.email || '',
+          displayName: firebaseUser.displayName || 'User',
+          photoURL: firebaseUser.photoURL || undefined,
+          ecoScore: 1250,
+          totalWasteDiverted: 45.2,
+          co2Saved: 23.8,
+          badges: [
+            { id: '1', name: 'Eco Helper', description: 'First waste item shared', icon: '🌱', unlockedAt: new Date() },
+            { id: '2', name: 'Green Star', description: '10 items diverted from landfill', icon: '⭐', unlockedAt: new Date() }
+          ]
+        });
+      } else {
+        setCurrentUser(null);
       }
-    }
+      setLoading(false);
+    });
+
+    return unsubscribe;
   }, []);
 
-  const login = async (email: string, password: string): Promise<boolean> => {
-    setIsLoading(true);
-    try {
-      // Simulate API call - In production, this would be a real API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Mock authentication - replace with real API call
-      if (email && password.length >= 6) {
-        const userData: User = {
-          id: Math.random().toString(36).substr(2, 9),
-          email,
-          name: email.split('@')[0],
-          lastLogin: new Date().toISOString(),
-        };
-        
-        setUser(userData);
-        Cookies.set('user', JSON.stringify(userData), { expires: 7 });
-        toast.success('Welcome back! Login successful.');
-        return true;
-      } else {
-        toast.error('Invalid credentials. Please try again.');
-        return false;
-      }
-    } catch (error) {
-      toast.error('Login failed. Please try again.');
-      return false;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const register = async (name: string, email: string, password: string): Promise<boolean> => {
-    setIsLoading(true);
-    try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1200));
-      
-      // Mock registration - replace with real API call
-      if (name && email && password.length >= 6) {
-        const userData: User = {
-          id: Math.random().toString(36).substr(2, 9),
-          email,
-          name,
-          lastLogin: new Date().toISOString(),
-        };
-        
-        setUser(userData);
-        Cookies.set('user', JSON.stringify(userData), { expires: 7 });
-        toast.success(`Welcome to Nexa AI, ${name}! Account created successfully.`);
-        return true;
-      } else {
-        toast.error('Please fill all fields correctly.');
-        return false;
-      }
-    } catch (error) {
-      toast.error('Registration failed. Please try again.');
-      return false;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const logout = () => {
-    setUser(null);
-    Cookies.remove('user');
-    toast.info('You have been logged out successfully.');
-  };
-
-  const value: AuthContextType = {
-    user,
+  const value = {
+    currentUser,
     login,
     register,
+    loginWithGoogle,
     logout,
-    isLoading,
+    loading
   };
 
   return (
     <AuthContext.Provider value={value}>
-      {children}
+      {!loading && children}
     </AuthContext.Provider>
   );
 };
